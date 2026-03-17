@@ -60,8 +60,8 @@ KAKU_TARGET_SHELL="${KAKU_TARGET_SHELL:-fish}"
 
 USER_CONFIG_DIR="$HOME/.config/kaku/fish"
 KAKU_FISH_FILE="$USER_CONFIG_DIR/kaku.fish"
-FISH_CONFIG_DIR="$HOME/.config/fish"
-FISH_CONFIG_FILE="$FISH_CONFIG_DIR/config.fish"
+FISH_CONF_D_DIR="$HOME/.config/fish/conf.d"
+FISH_CONF_D_FILE="$FISH_CONF_D_DIR/kaku.fish"
 KAKU_TMUX_DIR="$HOME/.config/kaku/tmux"
 KAKU_TMUX_FILE="$KAKU_TMUX_DIR/kaku.tmux.conf"
 STARSHIP_CONFIG="$HOME/.config/starship.toml"
@@ -88,23 +88,12 @@ YAZI_KEYMAP_DEFAULTS=(
 	'  { on = "<Enter>", run = "enter", desc = "Enter the child directory" },'
 )
 
-KAKU_FISH_SOURCE_LINE='if test -f "$HOME/.config/kaku/fish/kaku.fish"; . "$HOME/.config/kaku/fish/kaku.fish"; end # Kaku Fish Integration'
-BACKUP_SUFFIX=".kaku-backup-$(date +%s)"
-FISH_CONFIG_BACKED_UP=0
-
 ensure_dirs() {
 	mkdir -p "$USER_CONFIG_DIR"
 	mkdir -p "$USER_CONFIG_DIR/bin"
 	mkdir -p "$KAKU_TMUX_DIR"
-	mkdir -p "$FISH_CONFIG_DIR"
+	mkdir -p "$FISH_CONF_D_DIR"
 	mkdir -p "$YAZI_CONFIG_DIR"
-}
-
-backup_config_once() {
-	if [[ -f "$FISH_CONFIG_FILE" ]] && [[ "$FISH_CONFIG_BACKED_UP" -eq 0 ]]; then
-		cp "$FISH_CONFIG_FILE" "${FISH_CONFIG_FILE}${BACKUP_SUFFIX}"
-		FISH_CONFIG_BACKED_UP=1
-	fi
 }
 
 write_fish_integration_file() {
@@ -134,28 +123,6 @@ bind -M insert ctrl-s history-search-forward
 bind -M default up history-search-backward
 bind -M default down history-search-forward
 EOF
-}
-
-normalize_fish_config_line() {
-	backup_config_once
-
-	local tmp
-	tmp="$(mktemp "${TMPDIR:-/tmp}/kaku-fish-config.XXXXXX")"
-
-	if [[ ! -f "$FISH_CONFIG_FILE" ]]; then
-		touch "$FISH_CONFIG_FILE"
-	fi
-
-	grep -vF "# Kaku Fish Integration" "$FISH_CONFIG_FILE" >"$tmp" || true
-
-	if ! grep -qF "# Kaku Fish Integration" "$tmp"; then
-		if [[ -s "$tmp" ]] && [[ -n "$(tail -c 1 "$tmp" || true)" ]]; then
-			echo >>"$tmp"
-		fi
-	fi
-	echo "$KAKU_FISH_SOURCE_LINE" >>"$tmp"
-
-	mv "$tmp" "$FISH_CONFIG_FILE"
 }
 
 ensure_tmux_integration() {
@@ -717,7 +684,15 @@ if [[ ! -f "$KAKU_FISH_FILE" || "$UPDATE_ONLY" == "true" ]]; then
 	fi
 fi
 
-normalize_fish_config_line
+cat <<'EOF' >"$FISH_CONF_D_FILE"
+# Kaku shell integration -- managed. Remove with: kaku reset
+set -l _kaku_fish_init "$HOME/.config/kaku/fish/kaku.fish"
+if test -f $_kaku_fish_init
+    source $_kaku_fish_init
+end
+EOF
+echo -e "  ${GREEN}✓${NC} ${BOLD}Integrate${NC}   Installed ${NC}~/.config/fish/conf.d/kaku.fish${NC}"
+
 ensure_tmux_integration
 install_kaku_terminfo
 ensure_starship_config
@@ -743,4 +718,8 @@ else
 	echo -e "${YELLOW}Info: install_cli_tools.sh not found, skipped.${NC}"
 fi
 
-echo -e "  ${GREEN}✓${NC} ${BOLD}Done${NC}      Kaku fish integration applied"
+echo ""
+echo -e "${GREEN}${BOLD}Kaku Fish setup complete!${NC}"
+echo ""
+echo "Restart fish or run: source ~/.config/fish/conf.d/kaku.fish"
+echo "Roll back anytime with: kaku reset"

@@ -32,9 +32,7 @@ mod imp {
     use super::*;
 
     const KAKU_SOURCE_PATTERN: &str = "kaku/zsh/kaku.zsh";
-    const KAKU_FISH_SOURCE_PATTERN: &str = "kaku/fish/kaku.fish";
     const KAKU_PATH_MARKER: &str = "# Kaku PATH Integration";
-    const KAKU_FISH_MARKER: &str = "# Kaku Fish Integration";
     const KAKU_TMUX_SOURCE_PATTERN: &str = "kaku/tmux/kaku.tmux.conf";
     const KAKU_LEGACY_INLINE_MARKER: &str = "# Kaku Shell Integration";
     const KAKU_LEGACY_INLINE_VAR: &str = "KAKU_ZSH_DIR";
@@ -249,10 +247,6 @@ mod imp {
         }
     }
 
-    fn fishrc_path() -> PathBuf {
-        home_dir().join(".config").join("fish").join("config.fish")
-    }
-
     fn tmuxrc_path() -> PathBuf {
         home_dir().join(".tmux.conf")
     }
@@ -319,33 +313,30 @@ mod imp {
     }
 
     fn remove_fish_integration(report: &mut ResetReport) -> anyhow::Result<()> {
-        let fishrc = fishrc_path();
-        if !fishrc.exists() {
-            report.skipped(format!("{} not found", fishrc.display()));
-            return Ok(());
-        }
+        let conf_d_file = home_dir()
+            .join(".config")
+            .join("fish")
+            .join("conf.d")
+            .join("kaku.fish");
+        remove_file_if_exists(
+            conf_d_file,
+            "removed ~/.config/fish/conf.d/kaku.fish",
+            report,
+        )?;
 
-        let original = std::fs::read_to_string(&fishrc)
-            .with_context(|| format!("read {}", fishrc.display()))?;
-        let filtered: Vec<&str> = original
-            .lines()
-            .filter(|line| !line.contains(KAKU_FISH_SOURCE_PATTERN) && !line.contains(KAKU_FISH_MARKER))
-            .collect();
-        let removed_managed_lines = filtered.len() != original.lines().count();
-        if !removed_managed_lines {
-            report.skipped(format!(
-                "no Kaku fish integration found in {}",
-                fishrc.display()
-            ));
-            return Ok(());
-        }
+        let fish_init = config_home().join("fish").join("kaku.fish");
+        remove_file_if_exists(
+            fish_init,
+            "removed ~/.config/kaku/fish/kaku.fish",
+            report,
+        )?;
 
-        let mut updated = filtered.join("\n");
-        if !updated.is_empty() {
-            updated.push('\n');
-        }
-        std::fs::write(&fishrc, updated).with_context(|| format!("write {}", fishrc.display()))?;
-        report.changed(format!("removed Kaku-managed lines from {}", fishrc.display()));
+        let fish_wrapper = config_home().join("fish").join("bin").join("kaku");
+        remove_file_if_exists(
+            fish_wrapper,
+            "removed ~/.config/kaku/fish/bin/kaku wrapper",
+            report,
+        )?;
         Ok(())
     }
 
@@ -357,15 +348,6 @@ mod imp {
             report.changed(format!("removed {}", kaku_init.display()));
         } else {
             report.skipped(format!("{} not found", kaku_init.display()));
-        }
-
-        let kaku_fish_init = config_home().join("fish").join("kaku.fish");
-        if kaku_fish_init.exists() {
-            std::fs::remove_file(&kaku_fish_init)
-                .with_context(|| format!("remove {}", kaku_fish_init.display()))?;
-            report.changed(format!("removed {}", kaku_fish_init.display()));
-        } else {
-            report.skipped(format!("{} not found", kaku_fish_init.display()));
         }
 
         Ok(())

@@ -293,7 +293,7 @@ fn build_environment_group() -> DoctorGroup {
                 managed_bin_dir(target_shell).display()
             ),
             match target_shell {
-                KakuShell::Fish => "This PATH entry is normally added by a managed config line in ~/.config/fish/config.fish".to_string(),
+                KakuShell::Fish => "This PATH entry is normally added by ~/.config/fish/conf.d/kaku.fish loading the managed Kaku fish init".to_string(),
                 KakuShell::Zsh => "This PATH entry is normally added by a managed PATH line in ~/.zshrc".to_string(),
             },
             "PATH in Doctor reflects the current process environment and can differ between GUI and Terminal launches."
@@ -314,7 +314,7 @@ fn build_environment_group() -> DoctorGroup {
         title: "Shell Config Target Path",
         status: DoctorStatus::Info,
         summary: if target_shell == KakuShell::Fish {
-            format!("Fish config: {}", fish_config_path().display())
+            format!("Fish conf.d entry: {}", fish_config_path().display())
         } else {
             match &zdotdir {
                 Some(dir) => format!("ZDOTDIR is {}", dir.display()),
@@ -415,7 +415,7 @@ fn build_shell_integration_group() -> DoctorGroup {
     };
     checks.push(DoctorCheck {
         title: match target_shell {
-            KakuShell::Fish => "fish config Sources Kaku Init",
+            KakuShell::Fish => "fish conf.d Sources Kaku Init",
             KakuShell::Zsh => "zshrc Sources Kaku Init",
         },
         status: match &source_check {
@@ -593,7 +593,7 @@ impl FishConfigCheck {
             return details;
         }
         if self.missing_file {
-            details.push("config file does not exist yet".to_string());
+            details.push("fish conf.d entry point does not exist yet".to_string());
         }
         if self.active_lines > 0 {
             details.push(format!("Active Kaku source lines: {}", self.active_lines));
@@ -671,7 +671,7 @@ fn shell_exec_command(shell: KakuShell) -> &'static str {
 
 fn shell_config_label(shell: KakuShell) -> &'static str {
     match shell {
-        KakuShell::Fish => "fish config",
+        KakuShell::Fish => "fish conf.d entry",
         KakuShell::Zsh => "zshrc",
     }
 }
@@ -684,7 +684,11 @@ fn shell_config_path(shell: KakuShell) -> PathBuf {
 }
 
 fn fish_config_path() -> PathBuf {
-    home_dir().join(".config").join("fish").join("config.fish")
+    home_dir()
+        .join(".config")
+        .join("fish")
+        .join("conf.d")
+        .join("kaku.fish")
 }
 
 fn group_status(checks: &[DoctorCheck]) -> DoctorStatus {

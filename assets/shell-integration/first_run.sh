@@ -133,7 +133,7 @@ echo ""
 echo "Shell config model:"
 if [[ "$(detect_kaku_setup_script)" == "setup_fish.sh" ]]; then
 	echo "  - Kaku writes managed shell config to ~/.config/kaku/fish/kaku.fish"
-	echo "  - config.fish gets PATH line plus one source line for the managed Kaku shell config"
+	echo "  - ~/.config/fish/conf.d/kaku.fish sources it automatically"
 else
 	echo "  - Kaku writes managed shell config to ~/.config/kaku/zsh/kaku.zsh"
 	echo "  - .zshrc gets one PATH line plus one source line for the managed Kaku shell config"
